@@ -35,8 +35,8 @@ export default function Home() {
       <section className="play-actions" id="play">
         <form onSubmit={(event) => act("create", event)}>
           <button className="play-cta" disabled={busy}>
-            <span aria-hidden>⚡</span>
-            {busy ? "Preparazione…" : "Gioca 1v1"}
+            <span aria-hidden>{"\u26A1"}</span>
+            {busy ? "Preparazione\u2026" : "Gioca 1V1"}
           </button>
         </form>
         <form className="join-code" onSubmit={(event) => act("join", event)}>
@@ -51,6 +51,13 @@ export default function Home() {
         </form>
         {error && <p className="error home-error" role="alert">{error}</p>}
       </section>
+
+      <aside className="quick-mission" aria-label="Missione rapida">
+        <span className="quick-mission-icon" aria-hidden>{"\u26A1"}</span>
+        <b>Vinci 3 duelli</b>
+        <span className="quick-mission-progress">0/3</span>
+        <strong>+100 XP</strong>
+      </aside>
 
       <GameBottomNavigation active="home" />
     </main>

@@ -16,6 +16,8 @@ export type RoomState = {
   code: string;
   status: "waiting" | "countdown" | "playing" | "finished" | "abandoned";
   players: PublicPlayer[];
+  hostPlayerId: string;
+  maxPlayers: number;
   gameId: string | null;
   countdownEndsAt: string | null;
   question: PublicQuestion | null;

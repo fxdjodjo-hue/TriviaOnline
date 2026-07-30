@@ -3,6 +3,8 @@ import {
   ANSWER_MS,
   determineWinner,
   generateRoomCode,
+  LOBBY_COUNTDOWN_MS,
+  MAX_PLAYERS,
   QUESTION_CYCLE_MS,
   READING_MS,
   REVEAL_MS,
@@ -43,7 +45,7 @@ export async function createRoom(nicknameInput: string) {
   const token = newPlayerToken();
   let room: { id: string; code: string } | null = null;
   for (let attempt = 0; attempt < 5 && !room; attempt++) {
-    const result = await db.from("rooms").insert({ code: generateRoomCode() }).select("id,code").single();
+    const result = await db.from("rooms").insert({ code: generateRoomCode(), max_players: MAX_PLAYERS }).select("id,code").single();
     if (!result.error) room = result.data;
   }
   if (!room) throw new Error("Impossibile creare un codice stanza.");
@@ -61,7 +63,7 @@ async function makeGame(db: ReturnType<typeof adminDb>, roomId: string, rematchO
   const { data: questions } = await db.from("questions").select("id").eq("is_active", true).limit(200);
   if (!questions || questions.length < 7) throw new Error("Domande non disponibili. Esegui il seed.");
   const shuffled = [...questions].sort(() => Math.random() - 0.5).slice(0, 7);
-  const countdownEndsAt = new Date(Date.now() + 3_000).toISOString();
+  const countdownEndsAt = new Date(Date.now() + LOBBY_COUNTDOWN_MS).toISOString();
   const { data: game, error } = await db.from("games").insert({
     room_id: roomId, status: "countdown", rematch_of_game_id: rematchOf ?? null
   }).select("id").single();
@@ -82,22 +84,38 @@ export async function joinRoom(codeInput: string, nicknameInput: string) {
   const { data: room } = await db.from("rooms").select("*").eq("code", code).maybeSingle();
   if (!room) throw new Error("Codice stanza inesistente.");
   if (new Date(room.expires_at).getTime() < Date.now()) throw new Error("La stanza è scaduta.");
-  if (room.guest_player_id) throw new Error("La stanza è già piena.");
+  if (room.status !== "waiting") throw new Error("La partita è già iniziata.");
   const token = newPlayerToken();
-  const { data: player, error } = await db.from("players").insert({
-    room_id: room.id, nickname, session_token_hash: tokenHash(token)
-  }).select("id").single();
-  if (error || !player) throw new Error("Impossibile entrare nella stanza.");
-  const claimed = await db.from("rooms").update({ guest_player_id: player.id })
-    .eq("id", room.id).is("guest_player_id", null).select("id").maybeSingle();
-  if (!claimed.data) {
-    await db.from("players").delete().eq("id", player.id);
-    throw new Error("La stanza è già piena.");
+  const { data: playerId, error } = await db.rpc("join_room_player", {
+    p_room_id: room.id, p_nickname: nickname, p_token_hash: tokenHash(token)
+  });
+  if (error || !playerId) {
+    if (error?.message.includes("ROOM_FULL")) throw new Error("La stanza è piena.");
+    throw new Error("Impossibile entrare nella stanza.");
   }
-  const game = await makeGame(db, room.id);
-  await event(db, "nickname_entered", { roomId: room.id, playerId: player.id });
-  await event(db, "room_joined", { roomId: room.id, gameId: game.gameId, playerId: player.id });
-  return { code, playerId: player.id, token };
+  await event(db, "nickname_entered", { roomId: room.id, playerId });
+  await event(db, "room_joined", { roomId: room.id, playerId });
+  return { code, playerId, token };
+}
+
+export async function startGame(code: string, playerId: string, token: string) {
+  const { db, room, player } = await authenticate(code, playerId, token);
+  if (room.host_player_id !== player.id) throw new Error("Solo il proprietario può avviare la partita.");
+  if (room.status !== "waiting") throw new Error("La partita è già stata avviata.");
+  const { count } = await db.from("players").select("*", { count: "exact", head: true }).eq("room_id", room.id);
+  if ((count ?? 0) < 2) throw new Error("Servono almeno due giocatori.");
+  const { data: claimed } = await db.from("rooms").update({ status: "countdown" })
+    .eq("id", room.id).eq("status", "waiting").select("id").maybeSingle();
+  if (!claimed) throw new Error("La partita è già stata avviata.");
+  let game;
+  try {
+    game = await makeGame(db, room.id);
+  } catch (error) {
+    await db.from("rooms").update({ status: "waiting" }).eq("id", room.id).is("current_game_id", null);
+    throw error;
+  }
+  await event(db, "game_countdown_started", { roomId: room.id, gameId: game.gameId, playerId });
+  return game;
 }
 
 type GameRow = {
@@ -125,12 +143,13 @@ async function advanceIfNeeded(db: ReturnType<typeof adminDb>, game: GameRow, ro
   if (!gameQuestion) return;
   const { data: answers } = await db.from("answers").select("id").eq("game_id", game.id)
     .eq("game_question_id", gameQuestion.id);
+  const { count: playerCount } = await db.from("players").select("*", { count: "exact", head: true }).eq("room_id", roomId);
   const expired = now >= new Date(game.question_started_at).getTime() + QUESTION_CYCLE_MS;
-  if (!gameQuestion.finished_at && ((answers?.length ?? 0) >= 2 || expired)) {
+  if (!gameQuestion.finished_at && ((answers?.length ?? 0) >= (playerCount ?? 2) || expired)) {
     const { data: claimed } = await db.rpc("claim_question_resolution", {
       p_game_id: game.id, p_expected_index: game.current_question_index
     });
-    if (claimed && expired && (answers?.length ?? 0) < 2) {
+    if (claimed && expired && (answers?.length ?? 0) < (playerCount ?? 2)) {
       await event(db, "question_timed_out", { roomId, gameId: game.id });
     }
     return;
@@ -145,10 +164,10 @@ async function advanceIfNeeded(db: ReturnType<typeof adminDb>, game: GameRow, ro
 }
 
 async function finalizeGame(db: ReturnType<typeof adminDb>, gameId: string, roomId: string) {
-  const { data: room } = await db.from("rooms").select("host_player_id,guest_player_id").eq("id", roomId).single();
-  if (!room) return;
+  const { data: players } = await db.from("players").select("id").eq("room_id", roomId);
+  if (!players) return;
   const standings = [];
-  for (const playerId of [room.host_player_id, room.guest_player_id]) {
+  for (const { id: playerId } of players) {
     const { data } = await db.from("answers").select("points_awarded,is_correct").eq("game_id", gameId).eq("player_id", playerId);
     standings.push({ playerId, score: data?.reduce((s, a) => s + a.points_awarded, 0) ?? 0, correct: data?.filter(a => a.is_correct).length ?? 0 });
   }
@@ -207,6 +226,7 @@ export async function getState(code: string, playerId: string, token: string): P
   const { data: requests } = game ? await db.from("rematch_requests").select("player_id").eq("game_id", game.id) : { data: [] };
   return {
     code: room.code, status: game?.status ?? room.status, players: publicPlayers, gameId: game?.id ?? null,
+    hostPlayerId: room.host_player_id, maxPlayers: room.max_players,
     countdownEndsAt: room.countdown_ends_at, question, winnerPlayerId: game?.winner_player_id ?? null,
     rematchRequestedBy: requests?.map(r => r.player_id) ?? []
   };
@@ -245,7 +265,8 @@ export async function requestRematch(code: string, playerId: string, token: stri
   await db.from("rematch_requests").upsert({ game_id: gameId, player_id: playerId });
   await event(db, "rematch_clicked", { roomId: room.id, gameId, playerId });
   const { count } = await db.from("rematch_requests").select("*", { count: "exact", head: true }).eq("game_id", gameId);
-  if ((count ?? 0) >= 2) {
+  const { count: playerCount } = await db.from("players").select("*", { count: "exact", head: true }).eq("room_id", room.id);
+  if ((count ?? 0) >= (playerCount ?? 2)) {
     const next = await makeGame(db, room.id, gameId);
     await event(db, "rematch_started", { roomId: room.id, gameId: next.gameId });
   }

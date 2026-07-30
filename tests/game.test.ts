@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { canJoinRoom, determineWinner, generateRoomCode, hasTimedOut, scoreAnswer, selectUnique, speedBonus, validateNickname } from "@/lib/game";
+import { canJoinRoom, determineWinner, generateRoomCode, hasTimedOut, scoreAnswer, selectUnique, speedBonus, validateMaxPlayers, validateNickname } from "@/lib/game";
 
 describe("regole QuickDuel",()=>{
   it("genera codici leggibili di sei caratteri",()=>expect(generateRoomCode(()=>0)).toBe("AAAAAA"));
@@ -7,6 +7,10 @@ describe("regole QuickDuel",()=>{
     expect(validateNickname("  Astro   Vale ")).toBe("Astro Vale");
     expect(()=>validateNickname("")).toThrow();
     expect(()=>validateNickname("x".repeat(21))).toThrow();
+  });
+  it("valida la capienza della lobby",()=>{
+    expect(validateMaxPlayers(2)).toBe(2);expect(validateMaxPlayers(20)).toBe(20);
+    expect(()=>validateMaxPlayers(1)).toThrow();expect(()=>validateMaxPlayers(21)).toThrow();
   });
   it("impedisce il terzo giocatore e le stanze scadute",()=>{
     expect(canJoinRoom(null,new Date(Date.now()+1000).toISOString())).toBe(true);
@@ -29,5 +33,6 @@ describe("regole QuickDuel",()=>{
     expect(determineWinner([{playerId:"a",score:200,correct:1},{playerId:"b",score:100,correct:1}])).toBe("a");
     expect(determineWinner([{playerId:"a",score:200,correct:2},{playerId:"b",score:200,correct:1}])).toBe("a");
     expect(determineWinner([{playerId:"a",score:200,correct:2},{playerId:"b",score:200,correct:2}])).toBeNull();
+    expect(determineWinner([{playerId:"a",score:200,correct:2},{playerId:"b",score:100,correct:1},{playerId:"c",score:50,correct:1}])).toBe("a");
   });
 });

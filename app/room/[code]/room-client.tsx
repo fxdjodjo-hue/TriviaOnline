@@ -12,6 +12,7 @@ const post = async (url:string, body:unknown) => {
 
 export function RoomClient({ code }: { code:string }) {
   const [session,setSession] = useState<Session|null>(null);
+  const [sessionChecked,setSessionChecked] = useState(false);
   const [joinName,setJoinName] = useState("");
   const [state,setState] = useState<RoomState|null>(null);
   const [error,setError] = useState("");
@@ -27,8 +28,8 @@ export function RoomClient({ code }: { code:string }) {
   },[code]);
   useEffect(()=>{
     const raw=localStorage.getItem(`quickduel_${code}`);
-    if(!raw){setJoinName(localStorage.getItem("quickduel_nickname")??"");return;}
-    const s=JSON.parse(raw) as Session; setSession(s); void load(s);
+    if(!raw){setJoinName(localStorage.getItem("quickduel_nickname")??"");setSessionChecked(true);return;}
+    const s=JSON.parse(raw) as Session; setSession(s); setSessionChecked(true); void load(s);
   },[code,load]);
   useEffect(()=>{
     if(!session)return;
@@ -67,88 +68,187 @@ export function RoomClient({ code }: { code:string }) {
     const s={playerId:data.playerId,token:data.token};localStorage.setItem("quickduel_nickname",joinName.trim());
     localStorage.setItem(`quickduel_${code}`,JSON.stringify(s));setSession(s);await load(s);
   }catch(cause){setError(cause instanceof Error?cause.message:"Impossibile entrare.");}}
-  if(!session)return <Shell><p className="eyebrow">Invito {code}</p><h1>Entra nella sfida</h1><div className="card">
-    <label htmlFor="join-nickname" style={{display:"block",marginBottom:8,fontWeight:700}}>Il tuo nickname</label>
-    <input id="join-nickname" className="input" maxLength={20} value={joinName} onChange={e=>setJoinName(e.target.value)}/>
-    <button className="btn primary" style={{marginTop:12}} onClick={join}>Entra nella sfida</button>{error&&<p className="error">{error}</p>}</div></Shell>;
-  if(error&&!state)return <Shell><p className="error">{error}</p><Link className="btn secondary" href="/" style={{textAlign:"center"}}>Torna alla home</Link></Shell>;
-  if(!state)return <Shell><p className="muted">Caricamento della sfida…</p></Shell>;
+  if(!sessionChecked)return <Shell mode="loading"><LoadingState eyebrow="Accesso alla lobby" title="Bentornato su QuickDuel" detail="Recuperiamo la tua sessione di gioco." /></Shell>;
+  if(!session)return <Shell mode="lobby"><section className="room-invite">
+    <header className="room-screen-heading">
+      <p>Invito · {code}</p>
+      <h1>Entra nella sfida.</h1>
+      <span>Scegli il nome con cui ti vedranno gli altri giocatori.</span>
+    </header>
+    <div className="invite-panel">
+      <label htmlFor="join-nickname">Il tuo nickname</label>
+      <input id="join-nickname" className="input" maxLength={20} value={joinName} onChange={e=>setJoinName(e.target.value)} placeholder="Inserisci il tuo nome"/>
+      <button className="play-cta invite-submit" onClick={join}><span>⚡</span> Entra nella sfida</button>
+      {error&&<p className="error">{error}</p>}
+    </div>
+  </section></Shell>;
+  if(error&&!state)return <Shell mode="lobby"><div className="room-state-error"><p className="error">{error}</p><Link className="btn secondary" href="/" style={{textAlign:"center"}}>Torna alla home</Link></div></Shell>;
+  if(!state)return <Shell mode="loading"><LoadingState eyebrow="Connessione alla stanza" title="Prepariamo la sfida" detail="Sincronizzazione dei giocatori in corso." /></Shell>;
   const me=state.players.find(p=>p.id===session.playerId);
-  const rival=state.players.find(p=>p.id!==session.playerId);
-  if(state.status==="waiting")return <Shell>
-    <p className="eyebrow">Stanza {code}</p><h1 style={{fontSize:"2.5rem",margin:"8px 0"}}>Sfida creata.</h1>
-    <p className="muted">Condividi l’invito. La partita parte appena entra il tuo avversario.</p>
-    <div className="card" style={{marginTop:18,textAlign:"center"}}><div style={{fontSize:"2rem",fontWeight:900,letterSpacing:".14em"}}>{code}</div>
-      <button className="btn primary" onClick={()=>share()} style={{marginTop:18}}>Condividi invito</button></div>
-    <p className="muted" style={{textAlign:"center"}}>In attesa dell’avversario<span aria-hidden> ···</span></p>
+  const isHost=state.hostPlayerId===session.playerId;
+  const standings=[...state.players].sort((a,b)=>b.score-a.score||b.correct-a.correct);
+  if(state.status==="waiting")return <Shell mode="waiting">
+    <section className="room-lobby">
+      <header className="lobby-topbar">
+        <Link className="lobby-back" href="/" aria-label="Torna alla home">←</Link>
+        <div className="brand lobby-brand"><span aria-hidden>⚡</span> Quick<em>Duel</em></div>
+        <div className="lobby-code">
+          <small>Codice stanza</small>
+          <strong>{code}</strong>
+        </div>
+      </header>
+      <div className="lobby-title">
+        <h1>Lobby</h1>
+        <p>Fino a {state.maxPlayers} giocatori</p>
+      </div>
+      <section className="lobby-roster">
+        <header className="lobby-roster-title">
+          <b><span aria-hidden>♟</span> Giocatori</b>
+          <strong>{state.players.length} <i>/ {state.maxPlayers}</i></strong>
+        </header>
+        <div className="lobby-player-list">
+          {state.players.map(player=><div className="lobby-player" key={player.id}>
+            <span className="lobby-player-avatar">{player.nickname.slice(0,1).toUpperCase()}</span>
+            <div className="lobby-player-copy">
+              <b>{player.nickname}{player.id===session.playerId&&<small>Tu</small>}</b>
+              {player.id===state.hostPlayerId&&<em>Host</em>}
+            </div>
+            <span className="lobby-player-presence"><i/> Presente</span>
+          </div>)}
+        </div>
+        <div className="lobby-info">
+          <span aria-hidden>ⓘ</span>
+          <p>{isHost?"Avvia la partita quando sono entrati tutti.":"La partita inizierà quando l’host preme Avvia."}</p>
+        </div>
+      </section>
+      <footer className="lobby-actions">
+        {isHost
+          ? <button className="play-cta lobby-start" disabled={state.players.length<2} onClick={()=>post(`/api/rooms/${code}/start`,session).then(()=>load(session))}><span>⚡</span> {state.players.length<2?"Attendi un amico":"Avvia partita"}</button>
+          : <div className="lobby-waiting" role="status"><span/><p>In attesa dell’host</p></div>}
+        <button className="lobby-share" onClick={()=>share()}><span aria-hidden>▣</span> Condividi invito</button>
+        <p className="lobby-meta"><span>▣ Stanza privata</span><span>{state.maxPlayers} giocatori max</span></p>
+      </footer>
+    </section>
   </Shell>;
   if(state.status==="countdown"){const count=Math.max(1,Math.ceil((new Date(state.countdownEndsAt!).getTime()-Date.now())/1000));
-    return <Shell><p className="eyebrow">Avversario trovato</p><div style={{margin:"auto",textAlign:"center"}}>
-      <div style={{fontSize:"8rem",fontWeight:900,color:"var(--lime)"}}>{count}</div><h1>Preparati!</h1>
-      <p>{me?.nickname} <span className="muted">contro</span> {rival?.nickname}</p></div></Shell>;}
-  if(state.status==="finished")return <Shell><Result state={state} me={me} rival={rival}
+    return <Shell mode="loading"><div className="room-countdown" role="status">
+      <p className="eyebrow">Partita in partenza</p>
+      <div className="countdown-orb"><span>{count}</span></div>
+      <h1>Preparati!</h1>
+      <p>{state.players.length} giocatori pronti</p>
+    </div></Shell>;}
+  if(state.status==="finished")return <Shell mode="result"><Result state={state} me={me}
     rematch={()=>post(`/api/rooms/${code}/rematch`,session).then(()=>load(session))} share={()=>share("result")}
     newOpponent={()=>{void metric("new_opponent_clicked");location.href="/";}} /></Shell>;
-  const q=state.question; if(!q)return <Shell><p className="muted">Preparazione della domanda…</p></Shell>;
+  const q=state.question; if(!q)return <Shell mode="loading"><LoadingState eyebrow="Partita avviata" title="Prima domanda in arrivo" detail="Stiamo preparando il campo di gioco." /></Shell>;
   const resolved=q.resolution; const mine=resolved?.answers[session.playerId];
   const isResolving=Boolean(resolved);
   const isReading=!isResolving&&readingRemaining>0;
   const phaseRemaining=isResolving?revealRemaining:isReading?readingRemaining:remaining;
   const timerWidth=isResolving?phaseRemaining/20:phaseRemaining/50;
   const effectiveSelected=selected??mine?.selected??null;
-  return <Shell>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"end"}}>
-      <div><span className="eyebrow">Domanda</span><b style={{display:"block",fontSize:"1.4rem"}}>{q.order+1} / 7</b></div>
-      <div style={{textAlign:"right"}}><b>{me?.score}</b> <span className="muted">—</span> <b>{rival?.score}</b><small className="muted" style={{display:"block"}}>{me?.nickname} · {rival?.nickname}</small></div>
-    </div>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:18}}>
-      <b style={{color:isResolving?"#f8fafc":isReading?"#c4b5fd":"var(--lime)"}}>
-        {isResolving?"Risultato":isReading?"Leggi la domanda":"Rispondi ora"}
-      </b>
-      <b aria-live="polite">{Math.max(0,Math.ceil(phaseRemaining/1000))}s</b>
-    </div>
-    <div className="timer" style={{margin:"8px 0 18px"}}><div style={{width:`${timerWidth}%`,background:isResolving?"#f8fafc":isReading?"#a78bfa":"var(--lime)"}}/></div>
-    <section className="card"><p className="eyebrow">{q.category}</p><h1 style={{fontSize:"clamp(1.5rem,7vw,2.2rem)",lineHeight:1.08,margin:"10px 0 22px"}}>{q.text}</h1>
-      {isReading&&!resolved?<div style={{minHeight:286,display:"grid",placeItems:"center",textAlign:"center",border:"1px dashed #475569",borderRadius:16}}>
-        <div><strong style={{fontSize:"2.5rem",color:"#c4b5fd"}}>{Math.ceil(readingRemaining/1000)}</strong><p className="muted" style={{margin:"6px 0 0"}}>Le risposte appariranno tra poco</p></div>
-      </div>:<div style={{display:"grid",gap:10}}>{q.options.map((option,index)=>{
+  const myPosition=Math.max(1,standings.findIndex(player=>player.id===session.playerId)+1);
+  return <Shell mode="game">
+    <section className={`match-screen ${isReading?"reading":isResolving?"resolving":"answering"}`}>
+      <header className="match-topbar">
+        <div className="match-progress"><small>Domanda</small><strong>{q.order+1}<i>/7</i></strong></div>
+        <div className="brand match-brand"><span aria-hidden>⚡</span> Quick<em>Duel</em></div>
+        <div className="match-score"><small>Il tuo score</small><strong>{me?.score??0}</strong><i>#{myPosition}</i></div>
+      </header>
+      <div className="match-phase">
+        <div>
+          <span className="match-phase-dot"/>
+          <b>{isResolving?"Risultato":isReading?"Leggi la domanda":"Rispondi ora"}</b>
+        </div>
+        <strong aria-live="polite">{Math.max(0,Math.ceil(phaseRemaining/1000))}<small>s</small></strong>
+      </div>
+      <div className="match-timer"><span style={{width:`${timerWidth}%`}}/></div>
+      <article className="match-card">
+        <div className="match-question">
+          <span>{q.category}</span>
+          <h1>{q.text}</h1>
+        </div>
+        {isReading&&!resolved?<div className="match-reading">
+          <div className="reading-orb"><span>◉</span><strong>{Math.ceil(readingRemaining/1000)}</strong></div>
+          <h2>Concentrati</h2>
+          <p>Le risposte appariranno allo scadere del tempo.</p>
+        </div>:<div className="match-answer-list">{q.options.map((option,index)=>{
         let cls="";if(effectiveSelected===index)cls="selected";if(resolved&&index===resolved.correctOption)cls="correct";else if(resolved&&effectiveSelected===index)cls="wrong";
-        return <button key={option} className={`btn answer ${cls}`} disabled={selected!==null||remaining===0} onClick={()=>answer(index)}>
-          <span className="muted" style={{marginRight:10}}>{String.fromCharCode(65+index)}</span>{option}</button>;
+        return <button key={option} className={`match-answer ${cls}`} disabled={selected!==null||remaining===0||Boolean(resolved)} onClick={()=>answer(index)}>
+          <span>{String.fromCharCode(65+index)}</span><b>{option}</b>
+          {resolved&&index===resolved.correctOption&&<i aria-label="Risposta corretta">✓</i>}
+          {resolved&&effectiveSelected===index&&index!==resolved.correctOption&&<i aria-label="Risposta errata">✕</i>}
+        </button>;
       })}</div>}
-      {resolved&&<div role="status" style={{marginTop:16}}>
-        <p style={{fontWeight:800,color:mine?.correct?"#86efac":"#fca5a5",margin:"0 0 10px"}}>
-          {mine?.correct?`Corretta! +${mine.points}`:mine?"Risposta errata":"Tempo scaduto"}
-        </p>
-        <div style={{display:"grid",gap:8}}>
+      {resolved&&<div className={`match-resolution ${mine?.correct?"success":"failure"}`} role="status">
+        <div className="match-resolution-head">
+          <span>{mine?.correct?"✓":mine?"✕":"⌛"}</span>
+          <div><strong>{mine?.correct?"Risposta corretta!":mine?"Risposta errata":"Tempo scaduto"}</strong>
+            <small>{mine?.correct?`+${mine.points} punti`:"Nessun punto assegnato"}</small></div>
+        </div>
+        <div className="match-resolution-list">
           {state.players.map(player=>{
             const result=resolved.answers[player.id];
             const label=!result?"Tempo scaduto":result.correct?`Corretta · +${result.points}`:"Errata · +0";
-            return <div key={player.id} style={{display:"flex",justifyContent:"space-between",gap:12,padding:"10px 12px",borderRadius:12,background:"#0b1220"}}>
-              <b>{player.nickname}</b>
-              <span style={{color:result?.correct?"#86efac":"#fca5a5"}}>{result?.correct?"✓":"✕"} {label}</span>
+            return <div key={player.id}>
+              <b>{player.nickname}{player.id===session.playerId&&<small>Tu</small>}</b>
+              <span className={result?.correct?"correct":"wrong"}>{result?.correct?"✓":"✕"} {label}</span>
             </div>;
           })}
         </div>
-        <p className="muted" style={{textAlign:"center",marginBottom:0}}>Prossima domanda tra {Math.max(0,Math.ceil(revealRemaining/1000))}…</p>
+        <p className="match-next">Prossima domanda tra <b>{Math.max(0,Math.ceil(revealRemaining/1000))}</b></p>
       </div>}
-      {!resolved&&selected!==null&&<p className="muted" style={{marginBottom:0}}>Risposta bloccata. Aspettiamo l’avversario…</p>}
-      {resolved&&<details style={{marginTop:14}}><summary className="muted" style={{cursor:"pointer"}}>Segnala domanda</summary>
-        <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:10}}>{[["wrong_answer","Risposta sbagliata"],["unclear","Poco chiara"],["too_long","Troppo lunga"],["offensive","Offensiva"],["other","Altro"]].map(([reason,label])=>
-          <button key={reason} className="btn secondary" style={{width:"auto",padding:"8px 10px"}} onClick={()=>post(`/api/rooms/${code}/report`,{...session,gameQuestionId:q.id,reason}).then(()=>setError("Segnalazione ricevuta."))}>{label}</button>)}</div>
+      {!resolved&&selected!==null&&<div className="match-locked" role="status"><span>✓</span><p>Risposta bloccata. Attendiamo gli altri giocatori.</p></div>}
+      {resolved&&<details className="match-report"><summary>Segnala domanda</summary>
+        <div>{[["wrong_answer","Risposta sbagliata"],["unclear","Poco chiara"],["too_long","Troppo lunga"],["offensive","Offensiva"],["other","Altro"]].map(([reason,label])=>
+          <button key={reason} onClick={()=>post(`/api/rooms/${code}/report`,{...session,gameQuestionId:q.id,reason}).then(()=>setError("Segnalazione ricevuta."))}>{label}</button>)}</div>
       </details>}
-    </section>{error&&<p className="error">{error}</p>}
+      </article>
+      {error&&<p className="error match-error">{error}</p>}
+    </section>
   </Shell>;
 }
 
-function Shell({children}:{children:React.ReactNode}){return <main className="shell"><header className="brand">Quick<span>Duel</span></header><div style={{margin:"auto 0"}}>{children}</div></main>}
-function Result({state,me,rival,rematch,share,newOpponent}:{state:RoomState;me:PublicPlayer|undefined;rival:PublicPlayer|undefined;rematch:()=>void;share:()=>void;newOpponent:()=>void}){
+function Shell({children,mode="default"}:{children:React.ReactNode;mode?:"default"|"lobby"|"loading"|"waiting"|"game"|"result"}){
+  return <main className={`shell ${mode!=="default"?`room-shell room-shell-${mode}`:""}`}>
+    {mode!=="default"&&<div className="room-ambient" aria-hidden/>}
+    {mode!=="waiting"&&mode!=="game"&&mode!=="result"&&<header className="brand room-brand">Quick<span>Duel</span></header>}
+    <div className={mode!=="default"?"room-shell-content":undefined} style={mode==="default"?{margin:"auto 0"}:undefined}>{children}</div>
+  </main>;
+}
+function LoadingState({eyebrow,title,detail}:{eyebrow:string;title:string;detail:string}){
+  return <div className="room-loading" role="status">
+    <div className="loading-emblem" aria-hidden><span>⚡</span></div>
+    <p className="eyebrow">{eyebrow}</p>
+    <h1>{title}</h1>
+    <p>{detail}</p>
+    <div className="loading-dots" aria-hidden><i/><i/><i/></div>
+  </div>;
+}
+function Result({state,me,rematch,share,newOpponent}:{state:RoomState;me:PublicPlayer|undefined;rematch:()=>void;share:()=>void;newOpponent:()=>void}){
   const tie=!state.winnerPlayerId;const won=state.winnerPlayerId===me?.id;
-  return <><p className="eyebrow">Partita conclusa</p><h1 style={{fontSize:"3.2rem",lineHeight:1,margin:"10px 0"}}>{tie?"Pareggio.":won?"Hai vinto!":"Bella sfida."}</h1>
-    <div className="card" style={{margin:"22px 0"}}>{[me,rival].map((p)=><div key={p?.id} style={{display:"flex",justifyContent:"space-between",padding:"12px 0",borderBottom:"1px solid #263246"}}>
-      <span><b>{p?.nickname}</b><small className="muted" style={{display:"block"}}>{p?.correct}/7 corrette · media {p?.avgResponseMs??"—"} ms</small></span><strong style={{fontSize:"1.8rem"}}>{p?.score}</strong></div>)}</div>
-    <button className="btn primary" onClick={rematch}>Rivincita</button>
-    <button className="btn secondary" onClick={share} style={{marginTop:10}}>Condividi risultato</button>
-    <button onClick={newOpponent} style={{background:"none",border:0,color:"#cbd5e1",width:"100%",padding:16,cursor:"pointer"}}>Sfida un altro amico</button>
-    {state.rematchRequestedBy.length===1&&<p className="muted" style={{textAlign:"center"}}>In attesa che l’avversario accetti…</p>}</>;
+  const finalStandings=[...state.players].sort((a,b)=>b.score-a.score||b.correct-a.correct);
+  return <section className={`result-screen ${tie?"tie":won?"won":"lost"}`}>
+    <header className="result-brand"><span aria-hidden>⚡</span> Quick<em>Duel</em></header>
+    <div className="result-hero">
+      <div className="result-emblem"><span>{tie?"=":won?"♛":"⚔"}</span></div>
+      <p>Partita conclusa</p>
+      <h1>{tie?"Pareggio!":won?"Vittoria!":"Bella sfida!"}</h1>
+      <span>{tie?"Una sfida decisa sul filo.":won?"Hai dominato il duello.":"La prossima sarà quella giusta."}</span>
+    </div>
+    <div className="result-ranking">
+      <header><b>Classifica finale</b><span>{state.players.length} giocatori</span></header>
+      <div>{finalStandings.map((player,index)=><article className={player.id===me?.id?"current":""} key={player.id}>
+        <strong>{index+1}</strong>
+        <span><b>{player.nickname}{player.id===me?.id&&<small>Tu</small>}</b><small>{player.correct}/7 corrette · media {player.avgResponseMs??"—"} ms</small></span>
+        <em>{player.score}<small>pt</small></em>
+      </article>)}</div>
+    </div>
+    <div className="result-actions">
+      <button className="play-cta" onClick={rematch}><span>↻</span> Rivincita</button>
+      <button className="result-share" onClick={share}>▣ Condividi risultato</button>
+      <button className="result-new" onClick={newOpponent}>Sfida un altro amico</button>
+    </div>
+    {state.rematchRequestedBy.length>0&&state.rematchRequestedBy.length<state.players.length&&<p className="result-waiting">{state.rematchRequestedBy.length}/{state.players.length} pronti per la rivincita…</p>}
+  </section>;
 }

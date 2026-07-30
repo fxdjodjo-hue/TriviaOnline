@@ -3,6 +3,9 @@ export const READING_MS = 5_000;
 export const ANSWER_MS = 5_000;
 export const REVEAL_MS = 2_000;
 export const QUESTION_CYCLE_MS = READING_MS + ANSWER_MS;
+export const MIN_PLAYERS = 2;
+export const MAX_PLAYERS = 20;
+export const LOBBY_COUNTDOWN_MS = 5_000;
 
 export function generateRoomCode(random = Math.random): string {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -15,6 +18,13 @@ export function validateNickname(value: string): string {
   if (nickname.length > 20) throw new Error("Il nickname può contenere al massimo 20 caratteri.");
   if (!/^[\p{L}\p{N} _.-]+$/u.test(nickname)) throw new Error("Il nickname contiene caratteri non validi.");
   return nickname;
+}
+
+export function validateMaxPlayers(value: number): number {
+  if (!Number.isInteger(value) || value < MIN_PLAYERS || value > MAX_PLAYERS) {
+    throw new Error(`La lobby deve contenere da ${MIN_PLAYERS} a ${MAX_PLAYERS} giocatori.`);
+  }
+  return value;
 }
 
 export function speedBonus(responseTimeMs: number): number {
@@ -38,7 +48,7 @@ export function selectUnique<T>(items: readonly T[], count: number, random = Mat
 
 export type Standing = { playerId: string; score: number; correct: number };
 export function determineWinner(standings: Standing[]): string | null {
-  if (standings.length !== 2) return null;
+  if (standings.length < 2) return null;
   const sorted = [...standings].sort((a, b) => b.score - a.score || b.correct - a.correct);
   return sorted[0].score === sorted[1].score && sorted[0].correct === sorted[1].correct
     ? null
