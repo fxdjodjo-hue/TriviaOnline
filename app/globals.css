@@ -142,7 +142,7 @@ button { touch-action:manipulation; }
   min-height: 220px;
   max-height: 40svh;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr);
   align-items: center;
   margin: 10px -12px 0;
   padding: 0 18px 8px;
@@ -316,23 +316,7 @@ button { touch-action:manipulation; }
   font-weight: 1000;
   font-size: 1.05rem;
 }
-.hero-brand span, .hero-copy em { color: var(--home-lime); font-style: normal; }
-.hero-copy {
-  position: relative;
-  z-index: 4;
-  align-self: end;
-  text-align: center;
-}
-.hero-copy h1 {
-  margin: 0;
-  font-size: clamp(1.45rem, 6.2vw, 2rem);
-  line-height: 1;
-  letter-spacing: -.035em;
-  font-style: normal;
-  font-weight: 800;
-  text-shadow: 0 3px 16px #000;
-}
-.hero-copy > p:last-child { margin: 6px 0 0; color: #828da8; font-size: .67rem; }
+.hero-brand span { color: var(--home-lime); }
 .play-actions {
   position: relative;
   z-index: 5;
@@ -354,7 +338,6 @@ button { touch-action:manipulation; }
   text-transform: uppercase;
   cursor: pointer;
 }
-.play-cta span { margin-right: 9px; }
 .play-cta:disabled { opacity: .55; }
 .join-code {
   display: grid;
@@ -1924,7 +1907,6 @@ button { touch-action:manipulation; }
 @media (max-width: 370px) {
   .duel-hero { height: clamp(255px, 42dvh, 310px); }
   .challenger { top: 43px; height: 210px; }
-  .hero-copy h1 { font-size: 2.35rem; }
   .streak-badge { display: none; }
 }
 @media (max-height: 720px) {
@@ -1946,8 +1928,6 @@ button { touch-action:manipulation; }
     transform: translateX(-50%) scale(.76);
   }
   .hero-brand { top: 3px; font-size: clamp(.82rem, 2.4svh, 1rem); }
-  .hero-copy { bottom: clamp(2px, 1svh, 7px); }
-  .hero-copy h1 { font-size: clamp(1.75rem, 8.5vw, 2.35rem); }
   .play-cta { min-height: 52px; }
   .join-code { margin-top: 8px; }
   .quick-mission {

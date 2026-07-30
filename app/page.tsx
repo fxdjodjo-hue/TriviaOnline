@@ -35,8 +35,7 @@ export default function Home() {
       <section className="play-actions" id="play">
         <form onSubmit={(event) => act("create", event)}>
           <button className="play-cta" disabled={busy}>
-            <span aria-hidden>{"\u26A1"}</span>
-            {busy ? "Preparazione\u2026" : "Gioca 1V1"}
+            {busy ? "Preparazione\u2026" : "Gioca"}
           </button>
         </form>
         <form className="join-code" onSubmit={(event) => act("join", event)}>
