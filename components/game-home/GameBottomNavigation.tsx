@@ -1,10 +1,12 @@
-export function GameBottomNavigation() {
+import type { HomePanel } from "./HomePanelModal";
+
+export function GameBottomNavigation({ onOpen }: { onOpen: (panel: HomePanel) => void }) {
   return (
     <nav className="game-bottom-nav" aria-label="Navigazione principale">
-      <a className="active" href="#top"><span aria-hidden>⌂</span>Home</a>
-      <a href="#play"><span aria-hidden>⚔</span>Sfide</a>
-      <a href="#missions"><span aria-hidden>◎</span>Missioni</a>
-      <a href="#profile"><span aria-hidden>♙</span>Profilo</a>
+      <button className="active" type="button"><span aria-hidden>⌂</span>Home</button>
+      <button type="button" onClick={() => onOpen("ranking")}><span aria-hidden>♛</span>Classifica</button>
+      <button type="button" onClick={() => onOpen("missions")}><span aria-hidden>◎</span>Missioni</button>
+      <button type="button" onClick={() => onOpen("profile")}><span aria-hidden>♙</span>Profilo</button>
     </nav>
   );
 }
