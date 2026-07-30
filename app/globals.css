@@ -331,9 +331,11 @@ button { touch-action:manipulation; }
   font-weight: 800;
   text-transform: uppercase;
   cursor: pointer;
+  transition: color .18s ease, text-shadow .18s ease, transform .18s ease;
 }
 .game-bottom-nav span { font-size: 1.25rem; }
 .game-bottom-nav a.active { color: var(--home-lime); text-shadow: 0 0 10px rgba(185,255,44,.55); }
+.game-bottom-nav a:active { transform: scale(.94); }
 .game-section-page {
   --home-lime: #b9ff2c;
   --home-purple: #9a4dff;
@@ -516,11 +518,25 @@ button { touch-action:manipulation; }
   .challenger-purple { animation: hero-in-right .55s .08s both; }
   .versus-mark::before { animation: bolt-pulse 2.3s ease-in-out infinite; }
   .play-cta { animation: cta-glow 2.5s ease-in-out infinite; }
+  .game-home > .player-hud,
+  .game-home > .duel-hero,
+  .game-home > .play-actions,
+  .section-header,
+  .section-content {
+    animation: screen-enter .21s cubic-bezier(.2,.75,.25,1) both;
+  }
+  .game-home > .duel-hero,
+  .section-content { animation-delay: .035s; }
+  .game-home > .play-actions { animation-delay: .07s; }
 }
 @keyframes hero-in-left { from { opacity:0; transform:translateX(-30px); } }
 @keyframes hero-in-right { from { opacity:0; transform:translateX(30px); } }
 @keyframes bolt-pulse { 50% { filter:drop-shadow(0 0 25px var(--home-lime)); transform:scale(1.06); } }
 @keyframes cta-glow { 50% { box-shadow:inset 0 -5px rgba(91,144,0,.28),0 0 0 3px rgba(151,226,21,.35),0 0 32px rgba(185,255,44,.5); } }
+@keyframes screen-enter {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 @media (max-width: 370px) {
   .duel-hero { height: clamp(255px, 42dvh, 310px); }
   .challenger { top: 43px; height: 210px; }
