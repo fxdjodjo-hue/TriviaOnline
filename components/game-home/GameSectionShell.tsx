@@ -19,7 +19,7 @@ export function GameSectionShell({
         <p>{eyebrow}</p>
         <h1>{title}</h1>
       </header>
-      <div className="section-content">{children}</div>
+      <div className={`section-content section-content-${active}`}>{children}</div>
       <GameBottomNavigation active={active} />
     </main>
   );
