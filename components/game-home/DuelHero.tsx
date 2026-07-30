@@ -26,7 +26,6 @@ export function DuelHero() {
       <div className="versus-mark"><span>VS</span></div>
       <div className="hero-copy">
         <h1 id="duel-title">Duella e <em>vinci</em></h1>
-        <p>7 domande · 5 secondi per leggere · 5 per rispondere</p>
       </div>
     </section>
   );
