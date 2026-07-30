@@ -42,13 +42,6 @@ export default function Home() {
         {error && <p className="error home-error" role="alert">{error}</p>}
       </section>
 
-      <aside className="quick-mission" aria-label="Missione rapida">
-        <span className="quick-mission-icon" aria-hidden>{"\u26A1"}</span>
-        <b>Vinci 3 duelli</b>
-        <span className="quick-mission-progress">0/3</span>
-        <strong>+100 XP</strong>
-      </aside>
-
       <GameBottomNavigation active="home" />
     </main>
   );

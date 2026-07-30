@@ -155,6 +155,42 @@ button { touch-action:manipulation; }
   text-shadow: 0 5px 24px rgba(0,0,0,.6);
 }
 .hero-brand span { color: var(--home-lime); }
+.hero-question {
+  position: absolute;
+  z-index: 2;
+  bottom: calc(50% + 34px);
+  width: max-content;
+  max-width: min(190px, 46vw);
+  padding: 9px 12px;
+  border: 1px solid rgba(154,77,255,.7);
+  border-radius: 14px;
+  color: #eef2ff;
+  background: linear-gradient(145deg,rgba(21,24,43,.96),rgba(10,12,26,.96));
+  box-shadow: 0 8px 25px rgba(0,0,0,.34),0 0 18px rgba(154,77,255,.12);
+  font-size: clamp(.62rem,2.5vw,.76rem);
+  font-weight: 800;
+  line-height: 1.25;
+  text-align: center;
+  pointer-events: none;
+}
+.hero-question.is-left { right: calc(50% + 26px); }
+.hero-question.is-right { left: calc(50% + 26px); border-color: rgba(185,255,44,.62); }
+.hero-question::after {
+  content: "";
+  position: absolute;
+  bottom: -6px;
+  width: 10px;
+  height: 10px;
+  border-right: 1px solid rgba(154,77,255,.7);
+  border-bottom: 1px solid rgba(154,77,255,.7);
+  background: #0d1020;
+  transform: rotate(45deg);
+}
+.hero-question.is-left::after { right: 18px; }
+.hero-question.is-right::after {
+  left: 18px;
+  border-color: rgba(185,255,44,.62);
+}
 .play-actions {
   position: relative;
   z-index: 5;
@@ -255,52 +291,6 @@ button { touch-action:manipulation; }
   text-transform: uppercase;
 }
 .home-error { margin: 10px 0 0; font-size: .8rem; }
-.quick-mission {
-  position: relative;
-  flex: 0 0 auto;
-  min-height: 58px;
-  max-height: 68px;
-  display: grid;
-  grid-template-columns: 30px minmax(0, 1fr) auto auto;
-  gap: 9px;
-  align-items: center;
-  margin: 10px 0;
-  padding: 9px 12px;
-  overflow: hidden;
-  border: 1px solid rgba(154, 77, 255, .62);
-  border-radius: 14px;
-  background: linear-gradient(110deg, rgba(19, 25, 43, .98), rgba(10, 9, 28, .98));
-  box-shadow: inset 3px 0 var(--home-lime), inset 0 1px rgba(255, 255, 255, .04);
-  white-space: nowrap;
-}
-.quick-mission-icon {
-  width: 28px;
-  height: 28px;
-  display: grid;
-  place-items: center;
-  border-radius: 9px;
-  color: var(--home-lime);
-  background: rgba(185, 255, 44, .09);
-  font-size: 1rem;
-  text-shadow: 0 0 10px rgba(185, 255, 44, .7);
-}
-.quick-mission b {
-  min-width: 0;
-  overflow: hidden;
-  font-size: .75rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.quick-mission-progress {
-  color: #aeb8cf;
-  font-size: .68rem;
-  font-weight: 900;
-}
-.quick-mission strong {
-  color: var(--home-lime);
-  font-size: .72rem;
-  white-space: nowrap;
-}
 .feature-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-top: 18px; }
 .feature-card {
   min-width: 0;
@@ -557,6 +547,7 @@ button { touch-action:manipulation; }
 .profile-stats span { padding: 12px 5px; border: 1px solid #303b5c; border-radius: 12px; color: #8290aa; font-size: .6rem; text-transform: uppercase; }
 .profile-stats b { display: block; margin-bottom: 4px; color: #fff; font-size: 1rem; }
 @media (prefers-reduced-motion:no-preference) {
+  .hero-question { animation: hero-question-pop 6s ease-in-out both; }
   .play-cta { animation: cta-glow 2.5s ease-in-out infinite; }
   .game-home > .player-hud,
   .game-home > .duel-hero,
@@ -568,6 +559,11 @@ button { touch-action:manipulation; }
   .game-home > .duel-hero,
   .section-content { animation-delay: .035s; }
   .game-home > .play-actions { animation-delay: .07s; }
+}
+@keyframes hero-question-pop {
+  0%, 8% { opacity: 0; transform: translateY(8px) scale(.92); }
+  16%, 72% { opacity: 1; transform: translateY(0) scale(1); }
+  84%, 100% { opacity: 0; transform: translateY(-5px) scale(.97); }
 }
 @keyframes cta-glow { 50% { box-shadow:inset 0 -4px rgba(91,144,0,.22),0 0 22px rgba(185,255,44,.28); } }
 @keyframes screen-enter {
@@ -1795,13 +1791,6 @@ button { touch-action:manipulation; }
   .hero-brand { font-size: clamp(1.65rem, 7vw, 2.1rem); }
   .play-cta { min-height: 52px; }
   .join-code { margin-top: 8px; }
-  .quick-mission {
-    min-height: 52px;
-    height: 52px;
-    margin-block: 7px;
-    padding-block: 6px;
-    border-radius: 999px;
-  }
   .game-home > .game-bottom-nav { padding-top: 6px; }
   .game-bottom-nav span { font-size: 1.1rem; }
 }
