@@ -1,5 +1,13 @@
 import { adminDb } from "@/lib/supabase/server";
-import { determineWinner, generateRoomCode, scoreAnswer, validateNickname } from "@/lib/game";
+import {
+  ANSWER_MS,
+  determineWinner,
+  generateRoomCode,
+  QUESTION_CYCLE_MS,
+  READING_MS,
+  scoreAnswer,
+  validateNickname
+} from "@/lib/game";
 import { newPlayerToken, tokenHash } from "@/lib/server/auth";
 import type { RoomState } from "@/lib/contracts";
 
@@ -114,7 +122,7 @@ async function advanceIfNeeded(db: ReturnType<typeof adminDb>, game: GameRow, ro
   const { data: answers } = await db.from("answers").select("id").eq("game_id", game.id)
     .eq("game_question_id", (await db.from("game_questions").select("id").eq("game_id", game.id)
       .eq("question_order", game.current_question_index).single()).data?.id ?? "");
-  const expired = now >= new Date(game.question_started_at).getTime() + 5_000;
+  const expired = now >= new Date(game.question_started_at).getTime() + QUESTION_CYCLE_MS;
   if ((answers?.length ?? 0) >= 2 || expired) {
     if (expired && (answers?.length ?? 0) < 2) await event(db, "question_timed_out", { roomId, gameId: game.id });
     const { data: claimed } = await db.rpc("claim_game_transition", {
@@ -170,7 +178,9 @@ export async function getState(code: string, playerId: string, token: string): P
       question = {
         id: gq.id, order: gq.question_order, category: String(raw.category), text: String(raw.question_text),
         options: gq.options_order.map((i: number) => optionsOf(raw)[i]),
-        startedAt: gq.started_at, closesAt: new Date(new Date(gq.started_at).getTime() + 5_000).toISOString(),
+        startedAt: gq.started_at,
+        answerOpensAt: new Date(new Date(gq.started_at).getTime() + READING_MS).toISOString(),
+        closesAt: new Date(new Date(gq.started_at).getTime() + QUESTION_CYCLE_MS).toISOString(),
         answeredPlayerIds: answerRows?.map(a => a.player_id) ?? [],
         ...(closed ? { resolution: {
           correctOption: gq.options_order.indexOf(Number(raw.correct_option)),
@@ -192,16 +202,18 @@ export async function submitAnswer(code: string, playerId: string, token: string
   const { data: game } = await db.from("games").select("*").eq("id", room.current_game_id).single();
   if (!game || game.status !== "playing" || game.current_question_index < 0) throw new Error("La partita non è attiva.");
   const elapsed = Date.now() - new Date(game.question_started_at).getTime();
-  if (elapsed > 5_000) throw new Error("Tempo scaduto.");
+  if (elapsed < READING_MS) throw new Error("La fase di risposta non è ancora iniziata.");
+  if (elapsed > QUESTION_CYCLE_MS) throw new Error("Tempo scaduto.");
+  const responseTime = elapsed - READING_MS;
   const { data: gq } = await db.from("game_questions")
     .select("id,options_order,questions(correct_option)").eq("game_id", game.id).eq("question_order", game.current_question_index).single();
   if (!gq?.questions) throw new Error("Domanda non disponibile.");
   const correctOriginal = Number((gq.questions as unknown as { correct_option: number }).correct_option);
   const correct = gq.options_order[selectedOption] === correctOriginal;
-  const points = scoreAnswer(correct, elapsed);
+  const points = scoreAnswer(correct, responseTime);
   const { error } = await db.from("answers").insert({
     game_id: game.id, game_question_id: gq.id, player_id: playerId, selected_option: selectedOption,
-    is_correct: correct, response_time_ms: Math.min(5_000, Math.max(0, elapsed)), points_awarded: points
+    is_correct: correct, response_time_ms: Math.min(ANSWER_MS, Math.max(0, responseTime)), points_awarded: points
   });
   if (error?.code === "23505") throw new Error("Hai già risposto.");
   if (error) throw new Error("Impossibile salvare la risposta.");

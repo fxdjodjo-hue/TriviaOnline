@@ -17,6 +17,7 @@ export function RoomClient({ code }: { code:string }) {
   const [error,setError] = useState("");
   const [selected,setSelected] = useState<number|null>(null);
   const [remaining,setRemaining] = useState(5_000);
+  const [readingRemaining,setReadingRemaining] = useState(5_000);
   const questionId = useRef<string|null>(null);
 
   const load = useCallback(async (s:Session) => {
@@ -39,7 +40,12 @@ export function RoomClient({ code }: { code:string }) {
   },[code,load,session]);
   useEffect(()=>{
     if(state?.question?.id!==questionId.current){questionId.current=state?.question?.id??null;setSelected(null);}
-    const tick=()=>state?.question&&setRemaining(Math.max(0,new Date(state.question.closesAt).getTime()-Date.now()));
+    const tick=()=>{
+      if(!state?.question)return;
+      const now=Date.now();
+      setReadingRemaining(Math.max(0,new Date(state.question.answerOpensAt).getTime()-now));
+      setRemaining(Math.max(0,new Date(state.question.closesAt).getTime()-now));
+    };
     tick();const id=setInterval(tick,100);return()=>clearInterval(id);
   },[state?.question]);
 
@@ -81,18 +87,26 @@ export function RoomClient({ code }: { code:string }) {
     newOpponent={()=>{void metric("new_opponent_clicked");location.href="/";}} /></Shell>;
   const q=state.question; if(!q)return <Shell><p className="muted">Preparazione della domanda…</p></Shell>;
   const resolved=q.resolution; const mine=resolved?.answers[session.playerId];
+  const isReading=readingRemaining>0;
+  const phaseRemaining=isReading?readingRemaining:remaining;
   return <Shell>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"end"}}>
       <div><span className="eyebrow">Domanda</span><b style={{display:"block",fontSize:"1.4rem"}}>{q.order+1} / 7</b></div>
       <div style={{textAlign:"right"}}><b>{me?.score}</b> <span className="muted">—</span> <b>{rival?.score}</b><small className="muted" style={{display:"block"}}>{me?.nickname} · {rival?.nickname}</small></div>
     </div>
-    <div className="timer" style={{margin:"18px 0"}}><div style={{width:`${remaining/50}%`}}/></div>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:18}}>
+      <b style={{color:isReading?"#c4b5fd":"var(--lime)"}}>{isReading?"Leggi la domanda":"Rispondi ora"}</b>
+      <b aria-live="polite">{Math.max(0,Math.ceil(phaseRemaining/1000))}s</b>
+    </div>
+    <div className="timer" style={{margin:"8px 0 18px"}}><div style={{width:`${phaseRemaining/50}%`,background:isReading?"#a78bfa":"var(--lime)"}}/></div>
     <section className="card"><p className="eyebrow">{q.category}</p><h1 style={{fontSize:"clamp(1.5rem,7vw,2.2rem)",lineHeight:1.08,margin:"10px 0 22px"}}>{q.text}</h1>
-      <div style={{display:"grid",gap:10}}>{q.options.map((option,index)=>{
+      {isReading&&!resolved?<div style={{minHeight:286,display:"grid",placeItems:"center",textAlign:"center",border:"1px dashed #475569",borderRadius:16}}>
+        <div><strong style={{fontSize:"2.5rem",color:"#c4b5fd"}}>{Math.ceil(readingRemaining/1000)}</strong><p className="muted" style={{margin:"6px 0 0"}}>Le risposte appariranno tra poco</p></div>
+      </div>:<div style={{display:"grid",gap:10}}>{q.options.map((option,index)=>{
         let cls="";if(selected===index)cls="selected";if(resolved&&index===resolved.correctOption)cls="correct";else if(resolved&&selected===index)cls="wrong";
         return <button key={option} className={`btn answer ${cls}`} disabled={selected!==null||remaining===0} onClick={()=>answer(index)}>
           <span className="muted" style={{marginRight:10}}>{String.fromCharCode(65+index)}</span>{option}</button>;
-      })}</div>
+      })}</div>}
       {resolved&&<p role="status" style={{fontWeight:800,color:mine?.correct?"#86efac":"#fca5a5",marginBottom:0}}>{mine?.correct?`Corretta! +${mine.points}`:"Non questa volta."}</p>}
       {!resolved&&selected!==null&&<p className="muted" style={{marginBottom:0}}>Risposta bloccata. Aspettiamo l’avversario…</p>}
       {resolved&&<details style={{marginTop:14}}><summary className="muted" style={{cursor:"pointer"}}>Segnala domanda</summary>

@@ -1,5 +1,7 @@
 export const GAME_LENGTH = 7;
-export const QUESTION_MS = 5_000;
+export const READING_MS = 5_000;
+export const ANSWER_MS = 5_000;
+export const QUESTION_CYCLE_MS = READING_MS + ANSWER_MS;
 
 export function generateRoomCode(random = Math.random): string {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -15,8 +17,8 @@ export function validateNickname(value: string): string {
 }
 
 export function speedBonus(responseTimeMs: number): number {
-  const remaining = Math.max(0, QUESTION_MS - Math.max(0, responseTimeMs));
-  return Math.round(50 * (remaining / QUESTION_MS));
+  const remaining = Math.max(0, ANSWER_MS - Math.max(0, responseTimeMs));
+  return Math.round(50 * (remaining / ANSWER_MS));
 }
 
 export function scoreAnswer(correct: boolean, responseTimeMs: number): number {
@@ -47,5 +49,5 @@ export function canJoinRoom(guestPlayerId: string | null, expiresAt: string, now
 }
 
 export function hasTimedOut(startedAt: string, now = Date.now()) {
-  return now >= new Date(startedAt).getTime() + QUESTION_MS;
+  return now >= new Date(startedAt).getTime() + QUESTION_CYCLE_MS;
 }

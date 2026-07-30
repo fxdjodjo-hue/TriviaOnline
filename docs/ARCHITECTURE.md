@@ -12,6 +12,9 @@ endpoint, which never exposes `correct_option` until a question closes.
 
 The guest joining creates a game, chooses seven unique questions and starts a three
 second countdown. The first state request after the countdown starts question zero.
+Each question has a server-timed 5-second reading phase where options are hidden,
+followed by a 5-second answer phase. Response time and speed bonus start only when the
+answer phase opens.
 Each state/answer request may close an expired or fully answered question. The
 `claim_game_transition` RPC locks the game row and compares the expected index, so only
 one competing client wins the transition. The finalizer computes the winner from

@@ -6,6 +6,7 @@ export type PublicQuestion = {
   text: string;
   options: string[];
   startedAt: string;
+  answerOpensAt: string;
   closesAt: string;
   answeredPlayerIds: string[];
   resolution?: { correctOption: number; answers: Record<string, { selected: number | null; correct: boolean; points: number }> };
