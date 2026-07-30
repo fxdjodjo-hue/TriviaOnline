@@ -23,7 +23,8 @@ The host start command creates a game, chooses seven unique questions and starts
 second countdown. The first state request after the countdown starts question zero.
 Each question has a server-timed 5-second reading phase where options are hidden,
 followed by a 5-second answer phase. Response time and speed bonus start only when the
-answer phase opens.
+answer phase opens. A dedicated 3-second reveal replaces the question UI after each
+round and shows the correct answer plus the server-calculated results for all players.
 Each state/answer request may close an expired or fully answered question. The
 `claim_game_transition` RPC locks the game row and compares the expected index, so only
 one competing client wins the transition. The finalizer computes the winner from

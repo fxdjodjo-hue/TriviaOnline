@@ -1,6 +1,8 @@
 "use client";
 import { browserDb } from "@/lib/supabase/client";
 import type { PublicPlayer, RoomState } from "@/lib/contracts";
+import { REVEAL_MS } from "@/lib/game";
+import Image from "next/image";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -108,7 +110,7 @@ export function RoomClient({ code }: { code:string }) {
         </header>
         <div className="lobby-player-list">
           {state.players.map(player=><div className="lobby-player" key={player.id}>
-            <span className="lobby-player-avatar">{player.nickname.slice(0,1).toUpperCase()}</span>
+            <PlayerAvatar className="lobby-player-avatar" isCurrent={player.id===session.playerId}/>
             <div className="lobby-player-copy">
               <b>{player.nickname}{player.id===session.playerId&&<small>Tu</small>}</b>
               {player.id===state.hostPlayerId&&<em>Host</em>}
@@ -145,15 +147,18 @@ export function RoomClient({ code }: { code:string }) {
   const isResolving=Boolean(resolved);
   const isReading=!isResolving&&readingRemaining>0;
   const phaseRemaining=isResolving?revealRemaining:isReading?readingRemaining:remaining;
-  const timerWidth=isResolving?phaseRemaining/20:phaseRemaining/50;
+  const timerWidth=isResolving?phaseRemaining/(REVEAL_MS/100):phaseRemaining/50;
   const effectiveSelected=selected??mine?.selected??null;
   const myPosition=Math.max(1,standings.findIndex(player=>player.id===session.playerId)+1);
   return <Shell mode="game">
     <section className={`match-screen ${isReading?"reading":isResolving?"resolving":"answering"}`}>
       <header className="match-topbar">
+        <div className="match-player">
+          <PlayerAvatar className="match-player-avatar" isCurrent/>
+          <span><small>Tu · #{myPosition}</small><b>{me?.nickname??"Giocatore"}</b></span>
+        </div>
         <div className="match-progress"><small>Domanda</small><strong>{q.order+1}<i>/7</i></strong></div>
-        <div className="brand match-brand"><span aria-hidden>⚡</span> Quick<em>Duel</em></div>
-        <div className="match-score"><small>Il tuo score</small><strong>{me?.score??0}</strong><i>#{myPosition}</i></div>
+        <div className="match-score"><small>Score</small><strong>{me?.score??0}</strong></div>
       </header>
       <div className="match-phase">
         <div>
@@ -164,45 +169,54 @@ export function RoomClient({ code }: { code:string }) {
       </div>
       <div className="match-timer"><span style={{width:`${timerWidth}%`}}/></div>
       <article className="match-card">
-        <div className="match-question">
-          <span>{q.category}</span>
-          <h1>{q.text}</h1>
-        </div>
-        {isReading&&!resolved?<div className="match-reading">
-          <div className="reading-orb"><span>◉</span><strong>{Math.ceil(readingRemaining/1000)}</strong></div>
-          <h2>Concentrati</h2>
-          <p>Le risposte appariranno allo scadere del tempo.</p>
-        </div>:<div className="match-answer-list">{q.options.map((option,index)=>{
-        let cls="";if(effectiveSelected===index)cls="selected";if(resolved&&index===resolved.correctOption)cls="correct";else if(resolved&&effectiveSelected===index)cls="wrong";
-        return <button key={option} className={`match-answer ${cls}`} disabled={selected!==null||remaining===0||Boolean(resolved)} onClick={()=>answer(index)}>
-          <span>{String.fromCharCode(65+index)}</span><b>{option}</b>
-          {resolved&&index===resolved.correctOption&&<i aria-label="Risposta corretta">✓</i>}
-          {resolved&&effectiveSelected===index&&index!==resolved.correctOption&&<i aria-label="Risposta errata">✕</i>}
-        </button>;
-      })}</div>}
-      {resolved&&<div className={`match-resolution ${mine?.correct?"success":"failure"}`} role="status">
-        <div className="match-resolution-head">
-          <span>{mine?.correct?"✓":mine?"✕":"⌛"}</span>
-          <div><strong>{mine?.correct?"Risposta corretta!":mine?"Risposta errata":"Tempo scaduto"}</strong>
-            <small>{mine?.correct?`+${mine.points} punti`:"Nessun punto assegnato"}</small></div>
-        </div>
-        <div className="match-resolution-list">
-          {state.players.map(player=>{
-            const result=resolved.answers[player.id];
-            const label=!result?"Tempo scaduto":result.correct?`Corretta · +${result.points}`:"Errata · +0";
-            return <div key={player.id}>
-              <b>{player.nickname}{player.id===session.playerId&&<small>Tu</small>}</b>
-              <span className={result?.correct?"correct":"wrong"}>{result?.correct?"✓":"✕"} {label}</span>
-            </div>;
-          })}
-        </div>
-        <p className="match-next">Prossima domanda tra <b>{Math.max(0,Math.ceil(revealRemaining/1000))}</b></p>
-      </div>}
-      {!resolved&&selected!==null&&<div className="match-locked" role="status"><span>✓</span><p>Risposta bloccata. Attendiamo gli altri giocatori.</p></div>}
-      {resolved&&<details className="match-report"><summary>Segnala domanda</summary>
-        <div>{[["wrong_answer","Risposta sbagliata"],["unclear","Poco chiara"],["too_long","Troppo lunga"],["offensive","Offensiva"],["other","Altro"]].map(([reason,label])=>
-          <button key={reason} onClick={()=>post(`/api/rooms/${code}/report`,{...session,gameQuestionId:q.id,reason}).then(()=>setError("Segnalazione ricevuta."))}>{label}</button>)}</div>
-      </details>}
+        {resolved?<div className={`resolution-stage ${mine?.correct?"success":"failure"}`} role="status">
+          <div className="resolution-hero">
+            <div className="resolution-avatar-wrap">
+              <PlayerAvatar className="resolution-avatar" isCurrent/>
+              <span className="resolution-status-icon">{mine?.correct?"✓":mine?"✕":"⌛"}</span>
+            </div>
+            <p>Risultato domanda</p>
+            <h1>{mine?.correct?"Risposta corretta!":mine?"Risposta errata":"Tempo scaduto"}</h1>
+            <strong>{mine?.correct?`+${mine.points} punti`:"Nessun punto"}</strong>
+          </div>
+          <div className="resolution-correct-answer">
+            <small>Risposta corretta</small>
+            <span>{String.fromCharCode(65+resolved.correctOption)}</span>
+            <b>{q.options[resolved.correctOption]}</b>
+          </div>
+          <div className="resolution-player-list">
+            {state.players.map(player=>{
+              const result=resolved.answers[player.id];
+              const label=!result?"Tempo scaduto":result.correct?`+${result.points} pt`:"+0 pt";
+              return <div key={player.id}>
+                <PlayerAvatar className="resolution-list-avatar" isCurrent={player.id===session.playerId}/>
+                <span><b>{player.nickname}</b>{player.id===session.playerId&&<small>Tu</small>}</span>
+                <em className={result?.correct?"correct":"wrong"}>{result?.correct?"✓":"✕"} {label}</em>
+              </div>;
+            })}
+          </div>
+          <div className="resolution-next"><span style={{width:`${timerWidth}%`}}/><p>Prossima domanda tra <b>{Math.max(0,Math.ceil(revealRemaining/1000))}</b></p></div>
+          <details className="match-report"><summary>Segnala domanda</summary>
+            <div>{[["wrong_answer","Risposta sbagliata"],["unclear","Poco chiara"],["too_long","Troppo lunga"],["offensive","Offensiva"],["other","Altro"]].map(([reason,label])=>
+              <button key={reason} onClick={()=>post(`/api/rooms/${code}/report`,{...session,gameQuestionId:q.id,reason}).then(()=>setError("Segnalazione ricevuta."))}>{label}</button>)}</div>
+          </details>
+        </div>:<>
+          <div className="match-question">
+            <span>{q.category}</span>
+            <h1>{q.text}</h1>
+          </div>
+          {isReading?<div className="match-reading">
+            <div className="reading-orb"><span>◉</span><strong>{Math.ceil(readingRemaining/1000)}</strong></div>
+            <h2>Concentrati</h2>
+            <p>Le risposte appariranno allo scadere del tempo.</p>
+          </div>:<div className="match-answer-list">{q.options.map((option,index)=>{
+            const cls=effectiveSelected===index?"selected":"";
+            return <button key={option} className={`match-answer ${cls}`} disabled={selected!==null||remaining===0} onClick={()=>answer(index)}>
+              <span>{String.fromCharCode(65+index)}</span><b>{option}</b>
+            </button>;
+          })}</div>}
+          {selected!==null&&<div className="match-locked" role="status"><span>✓</span><p>Risposta bloccata. Attendiamo gli altri giocatori.</p></div>}
+        </>}
       </article>
       {error&&<p className="error match-error">{error}</p>}
     </section>
@@ -225,6 +239,11 @@ function LoadingState({eyebrow,title,detail}:{eyebrow:string;title:string;detail
     <div className="loading-dots" aria-hidden><i/><i/><i/></div>
   </div>;
 }
+function PlayerAvatar({isCurrent,className=""}:{isCurrent:boolean;className?:string}){
+  return <span className={`standard-player-avatar ${isCurrent?"lime":"purple"} ${className}`} aria-hidden>
+    <Image src={isCurrent?"/game/characters/challenger-lime.webp":"/game/characters/challenger-purple.webp"} alt="" fill sizes="72px"/>
+  </span>;
+}
 function Result({state,me,rematch,share,newOpponent}:{state:RoomState;me:PublicPlayer|undefined;rematch:()=>void;share:()=>void;newOpponent:()=>void}){
   const tie=!state.winnerPlayerId;const won=state.winnerPlayerId===me?.id;
   const finalStandings=[...state.players].sort((a,b)=>b.score-a.score||b.correct-a.correct);
@@ -240,6 +259,7 @@ function Result({state,me,rematch,share,newOpponent}:{state:RoomState;me:PublicP
       <header><b>Classifica finale</b><span>{state.players.length} giocatori</span></header>
       <div>{finalStandings.map((player,index)=><article className={player.id===me?.id?"current":""} key={player.id}>
         <strong>{index+1}</strong>
+        <PlayerAvatar className="result-player-avatar" isCurrent={player.id===me?.id}/>
         <span><b>{player.nickname}{player.id===me?.id&&<small>Tu</small>}</b><small>{player.correct}/7 corrette · media {player.avgResponseMs??"—"} ms</small></span>
         <em>{player.score}<small>pt</small></em>
       </article>)}</div>

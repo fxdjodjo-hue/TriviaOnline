@@ -1,4 +1,5 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import { AppSplashGate } from "@/components/splash/AppSplashGate";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -6,10 +7,16 @@ export const metadata: Metadata = {
   description: "7 domande. 5 secondi. Un solo vincitore."
 };
 
+export const viewport: Viewport = {
+  themeColor: "#03050f"
+};
+
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="it" suppressHydrationWarning>
-      <body>{children}</body>
+      <body>
+        <AppSplashGate>{children}</AppSplashGate>
+      </body>
     </html>
   );
 }

@@ -1,7 +1,7 @@
 export const GAME_LENGTH = 7;
 export const READING_MS = 5_000;
 export const ANSWER_MS = 5_000;
-export const REVEAL_MS = 2_000;
+export const REVEAL_MS = 3_000;
 export const QUESTION_CYCLE_MS = READING_MS + ANSWER_MS;
 export const MIN_PLAYERS = 2;
 export const MAX_PLAYERS = 20;
