@@ -45,9 +45,9 @@ export default function Home() {
             maxLength={6}
             value={code}
             onChange={(event) => setCode(event.target.value.replace(/[^a-z0-9]/gi, "").toUpperCase())}
-            placeholder="CODICE"
+            placeholder="CODICE STANZA"
           />
-          <button disabled={busy || code.length !== 6}>Entra con codice</button>
+          <button disabled={busy || code.length !== 6}>Entra</button>
         </form>
         {error && <p className="error home-error" role="alert">{error}</p>}
       </section>

@@ -140,17 +140,21 @@ button { touch-action:manipulation; }
   position: relative;
   flex: 1 1 300px;
   min-height: 220px;
+  max-height: 40svh;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  align-items: center;
   margin: 10px -12px 0;
+  padding: 0 18px 8px;
   overflow: hidden;
 }
 .duel-hero::before {
   content: "";
   position: absolute;
-  inset: 28px 10% 76px;
-  border: 1px solid rgba(157, 104, 255, .35);
-  clip-path: polygon(15% 0,85% 0,100% 25%,94% 80%,70% 100%,30% 100%,6% 80%,0 25%);
-  background: rgba(14,8,35,.3);
-  box-shadow: inset 0 0 50px rgba(127,64,255,.18);
+  inset: 30px 18% 52px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(154,77,255,.2), rgba(185,255,44,.045) 45%, transparent 72%);
+  filter: blur(10px);
 }
 .hero-grid {
   position: absolute;
@@ -161,14 +165,112 @@ button { touch-action:manipulation; }
     linear-gradient(150deg, rgba(166, 110, 255, .16) 12%, transparent 12.5%, transparent 87%, rgba(166, 110, 255, .16) 87.5%);
   background-size: 28px 49px;
 }
-.trivia-hero-art {
-  z-index: 1;
-  object-fit: cover;
-  object-position: center 42%;
-  filter: saturate(1.04) contrast(1.03);
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 10%, #000 76%, transparent 98%);
-  mask-image: linear-gradient(to bottom, transparent 0, #000 10%, #000 76%, transparent 98%);
+.quiz-hero-visual {
+  position: relative;
+  z-index: 2;
+  width: min(68vw, 270px);
+  height: min(22svh, 190px);
+  min-height: 142px;
+  display: grid;
+  place-items: center;
+  justify-self: center;
 }
+.quiz-card {
+  position: relative;
+  width: min(57vw, 224px);
+  height: min(18svh, 158px);
+  min-height: 126px;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  place-items: center;
+  padding: 19px 18px 15px;
+  border: 1px solid rgba(174, 115, 255, .78);
+  border-radius: 22px;
+  background:
+    linear-gradient(145deg, rgba(35,24,66,.96), rgba(11,13,30,.98));
+  box-shadow:
+    inset 0 1px rgba(255,255,255,.08),
+    0 18px 44px rgba(0,0,0,.35),
+    0 0 30px rgba(154,77,255,.17);
+  transform: perspective(700px) rotateX(3deg);
+}
+.quiz-card::before,
+.quiz-card::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 8px -9px -8px 9px;
+  border: 1px solid rgba(185,255,44,.18);
+  border-radius: inherit;
+  background: #0a0d1b;
+}
+.quiz-card::after {
+  inset: 16px -16px -14px 17px;
+  border-color: rgba(154,77,255,.12);
+  background: #070a15;
+  z-index: -2;
+}
+.quiz-card > strong {
+  color: var(--home-lime);
+  font-size: clamp(3rem, 13vw, 4.6rem);
+  line-height: .8;
+  text-shadow: 0 0 22px rgba(185,255,44,.38);
+}
+.quiz-timer {
+  position: absolute;
+  top: -15px;
+  right: -15px;
+  width: 43px;
+  height: 43px;
+  display: grid;
+  place-items: center;
+  border: 3px solid #3b2d61;
+  border-top-color: var(--home-lime);
+  border-right-color: var(--home-lime);
+  border-radius: 50%;
+  color: #fff;
+  background: #090c19;
+  font-size: .85rem;
+  font-weight: 900;
+  box-shadow: 0 0 18px rgba(185,255,44,.14);
+}
+.quiz-options {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(4,1fr);
+  gap: 7px;
+}
+.quiz-options span {
+  height: 25px;
+  display: grid;
+  place-items: center;
+  border: 1px solid #43375f;
+  border-radius: 7px;
+  color: #b7aec9;
+  background: rgba(5,7,17,.72);
+  font-size: .62rem;
+  font-weight: 900;
+}
+.quiz-options span:first-child {
+  border-color: rgba(185,255,44,.62);
+  color: var(--home-lime);
+  background: rgba(185,255,44,.065);
+}
+.quiz-category {
+  position: absolute;
+  width: 27px;
+  height: 27px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(132,103,178,.38);
+  border-radius: 9px;
+  color: #77708c;
+  background: rgba(12,13,27,.72);
+  font-size: .68rem;
+  font-weight: 800;
+}
+.quiz-category-left { left: -1px; top: 36%; transform: rotate(-8deg); }
+.quiz-category-right { right: -1px; bottom: 22%; transform: rotate(9deg); }
 .challenger {
   position: absolute;
   top: 45px;
@@ -206,10 +308,9 @@ button { touch-action:manipulation; }
   filter: drop-shadow(0 0 14px var(--home-lime));
 }
 .hero-brand {
-  position: absolute;
-  top: 7px;
-  left: 0;
-  right: 0;
+  position: relative;
+  z-index: 3;
+  align-self: start;
   margin: 0;
   text-align: center;
   font-weight: 1000;
@@ -217,37 +318,39 @@ button { touch-action:manipulation; }
 }
 .hero-brand span, .hero-copy em { color: var(--home-lime); font-style: normal; }
 .hero-copy {
-  position: absolute;
+  position: relative;
   z-index: 4;
-  inset: auto 12px 8px;
+  align-self: end;
   text-align: center;
 }
 .hero-copy h1 {
   margin: 0;
-  font-size: clamp(2.4rem, 11vw, 3.35rem);
-  line-height: .95;
-  letter-spacing: -.065em;
-  font-style: italic;
-  text-shadow: 0 4px 20px #000;
+  font-size: clamp(1.45rem, 6.2vw, 2rem);
+  line-height: 1;
+  letter-spacing: -.035em;
+  font-style: normal;
+  font-weight: 800;
+  text-shadow: 0 3px 16px #000;
 }
-.hero-copy > p:last-child { margin: 9px 0 0; color: #b2bad1; font-size: .76rem; }
+.hero-copy > p:last-child { margin: 6px 0 0; color: #828da8; font-size: .67rem; }
 .play-actions {
   position: relative;
   z-index: 5;
   flex: 0 0 auto;
-  margin-top: -2px;
+  margin: 4px 6px 0;
 }
 .play-cta {
   width: 100%;
-  min-height: 58px;
-  border: 2px solid #e9ff8a;
-  border-radius: 17px;
+  min-height: 60px;
+  border: 1px solid #dcff78;
+  border-radius: 19px;
   color: #111900;
   background: linear-gradient(#d5ff59,#a7e91d);
-  box-shadow: inset 0 -5px rgba(91, 144, 0, .28), 0 0 0 3px rgba(151,226,21,.25), 0 0 24px rgba(185,255,44,.32);
-  font-weight: 1000;
-  font-size: 1.3rem;
-  font-style: italic;
+  box-shadow: inset 0 -4px rgba(91,144,0,.22), 0 0 18px rgba(185,255,44,.22);
+  font-weight: 900;
+  font-size: 1.08rem;
+  font-style: normal;
+  letter-spacing: .02em;
   text-transform: uppercase;
   cursor: pointer;
 }
@@ -255,9 +358,9 @@ button { touch-action:manipulation; }
 .play-cta:disabled { opacity: .55; }
 .join-code {
   display: grid;
-  grid-template-columns: 92px 1fr;
+  grid-template-columns: minmax(0, 7fr) minmax(82px, 3fr);
   gap: 8px;
-  width: 86%;
+  width: 100%;
   margin: 12px auto 0;
 }
 .join-code input, .join-code button {
@@ -273,7 +376,8 @@ button { touch-action:manipulation; }
   outline: none;
   text-align: center;
   font-weight: 900;
-  letter-spacing: .12em;
+  letter-spacing: .08em;
+  font-size: .68rem;
 }
 .join-code button {
   border-radius: 11px;
