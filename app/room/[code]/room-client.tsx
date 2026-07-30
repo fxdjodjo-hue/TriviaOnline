@@ -18,6 +18,7 @@ export function RoomClient({ code }: { code:string }) {
   const [selected,setSelected] = useState<number|null>(null);
   const [remaining,setRemaining] = useState(5_000);
   const [readingRemaining,setReadingRemaining] = useState(5_000);
+  const [revealRemaining,setRevealRemaining] = useState(0);
   const questionId = useRef<string|null>(null);
 
   const load = useCallback(async (s:Session) => {
@@ -45,6 +46,9 @@ export function RoomClient({ code }: { code:string }) {
       const now=Date.now();
       setReadingRemaining(Math.max(0,new Date(state.question.answerOpensAt).getTime()-now));
       setRemaining(Math.max(0,new Date(state.question.closesAt).getTime()-now));
+      setRevealRemaining(state.question.revealEndsAt
+        ? Math.max(0,new Date(state.question.revealEndsAt).getTime()-now)
+        : 0);
     };
     tick();const id=setInterval(tick,100);return()=>clearInterval(id);
   },[state?.question]);
@@ -87,27 +91,47 @@ export function RoomClient({ code }: { code:string }) {
     newOpponent={()=>{void metric("new_opponent_clicked");location.href="/";}} /></Shell>;
   const q=state.question; if(!q)return <Shell><p className="muted">Preparazione della domanda…</p></Shell>;
   const resolved=q.resolution; const mine=resolved?.answers[session.playerId];
-  const isReading=readingRemaining>0;
-  const phaseRemaining=isReading?readingRemaining:remaining;
+  const isResolving=Boolean(resolved);
+  const isReading=!isResolving&&readingRemaining>0;
+  const phaseRemaining=isResolving?revealRemaining:isReading?readingRemaining:remaining;
+  const timerWidth=isResolving?phaseRemaining/20:phaseRemaining/50;
+  const effectiveSelected=selected??mine?.selected??null;
   return <Shell>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"end"}}>
       <div><span className="eyebrow">Domanda</span><b style={{display:"block",fontSize:"1.4rem"}}>{q.order+1} / 7</b></div>
       <div style={{textAlign:"right"}}><b>{me?.score}</b> <span className="muted">—</span> <b>{rival?.score}</b><small className="muted" style={{display:"block"}}>{me?.nickname} · {rival?.nickname}</small></div>
     </div>
     <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:18}}>
-      <b style={{color:isReading?"#c4b5fd":"var(--lime)"}}>{isReading?"Leggi la domanda":"Rispondi ora"}</b>
+      <b style={{color:isResolving?"#f8fafc":isReading?"#c4b5fd":"var(--lime)"}}>
+        {isResolving?"Risultato":isReading?"Leggi la domanda":"Rispondi ora"}
+      </b>
       <b aria-live="polite">{Math.max(0,Math.ceil(phaseRemaining/1000))}s</b>
     </div>
-    <div className="timer" style={{margin:"8px 0 18px"}}><div style={{width:`${phaseRemaining/50}%`,background:isReading?"#a78bfa":"var(--lime)"}}/></div>
+    <div className="timer" style={{margin:"8px 0 18px"}}><div style={{width:`${timerWidth}%`,background:isResolving?"#f8fafc":isReading?"#a78bfa":"var(--lime)"}}/></div>
     <section className="card"><p className="eyebrow">{q.category}</p><h1 style={{fontSize:"clamp(1.5rem,7vw,2.2rem)",lineHeight:1.08,margin:"10px 0 22px"}}>{q.text}</h1>
       {isReading&&!resolved?<div style={{minHeight:286,display:"grid",placeItems:"center",textAlign:"center",border:"1px dashed #475569",borderRadius:16}}>
         <div><strong style={{fontSize:"2.5rem",color:"#c4b5fd"}}>{Math.ceil(readingRemaining/1000)}</strong><p className="muted" style={{margin:"6px 0 0"}}>Le risposte appariranno tra poco</p></div>
       </div>:<div style={{display:"grid",gap:10}}>{q.options.map((option,index)=>{
-        let cls="";if(selected===index)cls="selected";if(resolved&&index===resolved.correctOption)cls="correct";else if(resolved&&selected===index)cls="wrong";
+        let cls="";if(effectiveSelected===index)cls="selected";if(resolved&&index===resolved.correctOption)cls="correct";else if(resolved&&effectiveSelected===index)cls="wrong";
         return <button key={option} className={`btn answer ${cls}`} disabled={selected!==null||remaining===0} onClick={()=>answer(index)}>
           <span className="muted" style={{marginRight:10}}>{String.fromCharCode(65+index)}</span>{option}</button>;
       })}</div>}
-      {resolved&&<p role="status" style={{fontWeight:800,color:mine?.correct?"#86efac":"#fca5a5",marginBottom:0}}>{mine?.correct?`Corretta! +${mine.points}`:"Non questa volta."}</p>}
+      {resolved&&<div role="status" style={{marginTop:16}}>
+        <p style={{fontWeight:800,color:mine?.correct?"#86efac":"#fca5a5",margin:"0 0 10px"}}>
+          {mine?.correct?`Corretta! +${mine.points}`:mine?"Risposta errata":"Tempo scaduto"}
+        </p>
+        <div style={{display:"grid",gap:8}}>
+          {state.players.map(player=>{
+            const result=resolved.answers[player.id];
+            const label=!result?"Tempo scaduto":result.correct?`Corretta · +${result.points}`:"Errata · +0";
+            return <div key={player.id} style={{display:"flex",justifyContent:"space-between",gap:12,padding:"10px 12px",borderRadius:12,background:"#0b1220"}}>
+              <b>{player.nickname}</b>
+              <span style={{color:result?.correct?"#86efac":"#fca5a5"}}>{result?.correct?"✓":"✕"} {label}</span>
+            </div>;
+          })}
+        </div>
+        <p className="muted" style={{textAlign:"center",marginBottom:0}}>Prossima domanda tra {Math.max(0,Math.ceil(revealRemaining/1000))}…</p>
+      </div>}
       {!resolved&&selected!==null&&<p className="muted" style={{marginBottom:0}}>Risposta bloccata. Aspettiamo l’avversario…</p>}
       {resolved&&<details style={{marginTop:14}}><summary className="muted" style={{cursor:"pointer"}}>Segnala domanda</summary>
         <div style={{display:"flex",gap:6,flexWrap:"wrap",marginTop:10}}>{[["wrong_answer","Risposta sbagliata"],["unclear","Poco chiara"],["too_long","Troppo lunga"],["offensive","Offensiva"],["other","Altro"]].map(([reason,label])=>

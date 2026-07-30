@@ -5,6 +5,7 @@ import {
   generateRoomCode,
   QUESTION_CYCLE_MS,
   READING_MS,
+  REVEAL_MS,
   scoreAnswer,
   validateNickname
 } from "@/lib/game";
@@ -119,12 +120,23 @@ async function advanceIfNeeded(db: ReturnType<typeof adminDb>, game: GameRow, ro
     return;
   }
   if (game.status !== "playing" || !game.question_started_at) return;
+  const { data: gameQuestion } = await db.from("game_questions").select("id,finished_at")
+    .eq("game_id", game.id).eq("question_order", game.current_question_index).single();
+  if (!gameQuestion) return;
   const { data: answers } = await db.from("answers").select("id").eq("game_id", game.id)
-    .eq("game_question_id", (await db.from("game_questions").select("id").eq("game_id", game.id)
-      .eq("question_order", game.current_question_index).single()).data?.id ?? "");
+    .eq("game_question_id", gameQuestion.id);
   const expired = now >= new Date(game.question_started_at).getTime() + QUESTION_CYCLE_MS;
-  if ((answers?.length ?? 0) >= 2 || expired) {
-    if (expired && (answers?.length ?? 0) < 2) await event(db, "question_timed_out", { roomId, gameId: game.id });
+  if (!gameQuestion.finished_at && ((answers?.length ?? 0) >= 2 || expired)) {
+    const { data: claimed } = await db.rpc("claim_question_resolution", {
+      p_game_id: game.id, p_expected_index: game.current_question_index
+    });
+    if (claimed && expired && (answers?.length ?? 0) < 2) {
+      await event(db, "question_timed_out", { roomId, gameId: game.id });
+    }
+    return;
+  }
+  if (gameQuestion.finished_at &&
+      now >= new Date(gameQuestion.finished_at).getTime() + REVEAL_MS) {
     const { data: claimed } = await db.rpc("claim_game_transition", {
       p_game_id: game.id, p_expected_index: game.current_question_index
     });
@@ -181,6 +193,9 @@ export async function getState(code: string, playerId: string, token: string): P
         startedAt: gq.started_at,
         answerOpensAt: new Date(new Date(gq.started_at).getTime() + READING_MS).toISOString(),
         closesAt: new Date(new Date(gq.started_at).getTime() + QUESTION_CYCLE_MS).toISOString(),
+        revealEndsAt: gq.finished_at
+          ? new Date(new Date(gq.finished_at).getTime() + REVEAL_MS).toISOString()
+          : null,
         answeredPlayerIds: answerRows?.map(a => a.player_id) ?? [],
         ...(closed ? { resolution: {
           correctOption: gq.options_order.indexOf(Number(raw.correct_option)),

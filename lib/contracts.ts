@@ -8,6 +8,7 @@ export type PublicQuestion = {
   startedAt: string;
   answerOpensAt: string;
   closesAt: string;
+  revealEndsAt: string | null;
   answeredPlayerIds: string[];
   resolution?: { correctOption: number; answers: Record<string, { selected: number | null; correct: boolean; points: number }> };
 };
