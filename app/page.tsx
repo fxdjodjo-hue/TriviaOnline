@@ -3,21 +3,21 @@ import { DuelHero } from "@/components/game-home/DuelHero";
 import { GameBottomNavigation } from "@/components/game-home/GameBottomNavigation";
 import { PlayerHeader } from "@/components/game-home/PlayerHeader";
 import { FormEvent, useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 export default function Home() {
   const router = useRouter();
   const [nickname, setNickname] = useState("");
-  const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   useEffect(() => setNickname(localStorage.getItem("quickduel_nickname") ?? ""), []);
 
-  async function act(action: "create" | "join", event: FormEvent) {
+  async function createRoom(event: FormEvent) {
     event.preventDefault(); setBusy(true); setError("");
     try {
       const response = await fetch("/api/rooms", { method:"POST", headers:{"content-type":"application/json"},
-        body:JSON.stringify({ action, nickname, ...(action === "join" ? { code:code.toUpperCase() } : {}) }) });
+        body:JSON.stringify({ action:"create", nickname }) });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error);
       localStorage.setItem("quickduel_nickname", nickname.trim());
@@ -33,21 +33,12 @@ export default function Home() {
       <DuelHero />
 
       <section className="play-actions" id="play">
-        <form onSubmit={(event) => act("create", event)}>
+        <form onSubmit={createRoom}>
           <button className="play-cta" disabled={busy}>
             {busy ? "Preparazione\u2026" : "Gioca"}
           </button>
         </form>
-        <form className="join-code" onSubmit={(event) => act("join", event)}>
-          <input
-            aria-label="Codice stanza"
-            maxLength={6}
-            value={code}
-            onChange={(event) => setCode(event.target.value.replace(/[^a-z0-9]/gi, "").toUpperCase())}
-            placeholder="CODICE STANZA"
-          />
-          <button disabled={busy || code.length !== 6}>Entra</button>
-        </form>
+        <Link className="join-room-link" href="/join">Entra in una stanza</Link>
         {error && <p className="error home-error" role="alert">{error}</p>}
       </section>
 
