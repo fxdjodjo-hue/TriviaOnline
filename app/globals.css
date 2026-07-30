@@ -509,7 +509,7 @@ button { touch-action:manipulation; }
   bottom: auto;
   flex: 0 0 auto;
   width: calc(100% + 24px);
-  margin: 0 -12px;
+  margin: auto -12px 0;
   padding-bottom: max(8px, env(safe-area-inset-bottom));
   transform: none;
 }
