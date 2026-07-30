@@ -195,7 +195,7 @@ button { touch-action:manipulation; }
   position: relative;
   z-index: 5;
   flex: 0 0 auto;
-  margin: 4px 6px 0;
+  margin: 4px 6px 14px;
 }
 .play-cta {
   width: 100%;
