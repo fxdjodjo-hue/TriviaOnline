@@ -1,7 +1,6 @@
 "use client";
 import { DuelHero } from "@/components/game-home/DuelHero";
 import { GameBottomNavigation } from "@/components/game-home/GameBottomNavigation";
-import { HomePanelModal, type HomePanel } from "@/components/game-home/HomePanelModal";
 import { PlayerHeader } from "@/components/game-home/PlayerHeader";
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -12,7 +11,6 @@ export default function Home() {
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [activePanel, setActivePanel] = useState<HomePanel | null>(null);
   useEffect(() => setNickname(localStorage.getItem("quickduel_nickname") ?? ""), []);
 
   async function act(action: "create" | "join", event: FormEvent) {
@@ -54,8 +52,7 @@ export default function Home() {
         {error && <p className="error home-error" role="alert">{error}</p>}
       </section>
 
-      <GameBottomNavigation onOpen={setActivePanel} />
-      {activePanel && <HomePanelModal panel={activePanel} nickname={nickname} onClose={() => setActivePanel(null)} />}
+      <GameBottomNavigation active="home" />
     </main>
   );
 }
