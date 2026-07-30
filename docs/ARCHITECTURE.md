@@ -1,0 +1,28 @@
+# QuickDuel architecture
+
+Next.js serves the mobile UI and all authoritative game commands. Browser clients keep
+only a player UUID and opaque token. The service role is server-only; tokens are stored
+as HMAC-SHA256 hashes.
+
+Supabase PostgreSQL owns rooms, games, shuffled question order, answer uniqueness and
+scores. Realtime changes are invalidation signals: clients refetch a sanitized state
+endpoint, which never exposes `correct_option` until a question closes.
+
+## Game transitions
+
+The guest joining creates a game, chooses seven unique questions and starts a three
+second countdown. The first state request after the countdown starts question zero.
+Each state/answer request may close an expired or fully answered question. The
+`claim_game_transition` RPC locks the game row and compares the expected index, so only
+one competing client wins the transition. The finalizer computes the winner from
+server-calculated answer rows.
+
+Polling every second is retained as a fallback when Realtime is unavailable and also
+drives server-time based timeout transitions.
+
+## Known prototype trade-off
+
+Realtime table SELECT policies expose non-secret synchronization rows to the anonymous
+Supabase key. Questions and analytics remain inaccessible. A production hardening pass
+should replace table broadcasts with private channels carrying only room-scoped
+invalidations.
