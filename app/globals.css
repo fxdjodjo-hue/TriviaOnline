@@ -138,183 +138,21 @@ button { touch-action:manipulation; }
 .xp-track span { display: block; width: 8%; height: 100%; background: linear-gradient(90deg,#72dd15,var(--home-lime)); }
 .duel-hero {
   position: relative;
-  flex: 1 1 300px;
-  min-height: 220px;
-  max-height: 40svh;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
-  align-items: center;
-  margin: 10px -12px 0;
-  padding: 0 18px 8px;
-  overflow: hidden;
-}
-.duel-hero::before {
-  content: "";
-  position: absolute;
-  inset: 30px 18% 52px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(154,77,255,.2), rgba(185,255,44,.045) 45%, transparent 72%);
-  filter: blur(10px);
-}
-.hero-grid {
-  position: absolute;
-  inset: 0;
-  opacity: .22;
-  background-image:
-    linear-gradient(30deg, rgba(166, 110, 255, .16) 12%, transparent 12.5%, transparent 87%, rgba(166, 110, 255, .16) 87.5%),
-    linear-gradient(150deg, rgba(166, 110, 255, .16) 12%, transparent 12.5%, transparent 87%, rgba(166, 110, 255, .16) 87.5%);
-  background-size: 28px 49px;
-}
-.quiz-hero-visual {
-  position: relative;
-  z-index: 2;
-  width: min(68vw, 270px);
-  height: min(22svh, 190px);
-  min-height: 142px;
+  flex: 1 1 auto;
+  min-height: 100px;
   display: grid;
   place-items: center;
-  justify-self: center;
-}
-.quiz-card {
-  position: relative;
-  width: min(57vw, 224px);
-  height: min(18svh, 158px);
-  min-height: 126px;
-  display: grid;
-  grid-template-rows: 1fr auto;
-  place-items: center;
-  padding: 19px 18px 15px;
-  border: 1px solid rgba(174, 115, 255, .78);
-  border-radius: 22px;
-  background:
-    linear-gradient(145deg, rgba(35,24,66,.96), rgba(11,13,30,.98));
-  box-shadow:
-    inset 0 1px rgba(255,255,255,.08),
-    0 18px 44px rgba(0,0,0,.35),
-    0 0 30px rgba(154,77,255,.17);
-  transform: perspective(700px) rotateX(3deg);
-}
-.quiz-card::before,
-.quiz-card::after {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  inset: 8px -9px -8px 9px;
-  border: 1px solid rgba(185,255,44,.18);
-  border-radius: inherit;
-  background: #0a0d1b;
-}
-.quiz-card::after {
-  inset: 16px -16px -14px 17px;
-  border-color: rgba(154,77,255,.12);
-  background: #070a15;
-  z-index: -2;
-}
-.quiz-card > strong {
-  color: var(--home-lime);
-  font-size: clamp(3rem, 13vw, 4.6rem);
-  line-height: .8;
-  text-shadow: 0 0 22px rgba(185,255,44,.38);
-}
-.quiz-timer {
-  position: absolute;
-  top: -15px;
-  right: -15px;
-  width: 43px;
-  height: 43px;
-  display: grid;
-  place-items: center;
-  border: 3px solid #3b2d61;
-  border-top-color: var(--home-lime);
-  border-right-color: var(--home-lime);
-  border-radius: 50%;
-  color: #fff;
-  background: #090c19;
-  font-size: .85rem;
-  font-weight: 900;
-  box-shadow: 0 0 18px rgba(185,255,44,.14);
-}
-.quiz-options {
-  width: 100%;
-  display: grid;
-  grid-template-columns: repeat(4,1fr);
-  gap: 7px;
-}
-.quiz-options span {
-  height: 25px;
-  display: grid;
-  place-items: center;
-  border: 1px solid #43375f;
-  border-radius: 7px;
-  color: #b7aec9;
-  background: rgba(5,7,17,.72);
-  font-size: .62rem;
-  font-weight: 900;
-}
-.quiz-options span:first-child {
-  border-color: rgba(185,255,44,.62);
-  color: var(--home-lime);
-  background: rgba(185,255,44,.065);
-}
-.quiz-category {
-  position: absolute;
-  width: 27px;
-  height: 27px;
-  display: grid;
-  place-items: center;
-  border: 1px solid rgba(132,103,178,.38);
-  border-radius: 9px;
-  color: #77708c;
-  background: rgba(12,13,27,.72);
-  font-size: .68rem;
-  font-weight: 800;
-}
-.quiz-category-left { left: -1px; top: 36%; transform: rotate(-8deg); }
-.quiz-category-right { right: -1px; bottom: 22%; transform: rotate(9deg); }
-.challenger {
-  position: absolute;
-  top: 45px;
-  width: 62%;
-  height: 245px;
-  filter: drop-shadow(0 0 18px currentColor);
-}
-.challenger img { object-fit: contain; }
-.challenger-lime { left: -13%; color: rgba(185,255,44,.55); }
-.challenger-purple { right: -13%; color: rgba(154,77,255,.62); }
-.versus-mark {
-  position: absolute;
-  z-index: 3;
-  top: 102px;
-  left: 50%;
-  width: 82px;
-  height: 108px;
-  display: grid;
-  place-items: center;
-  transform: translateX(-50%);
-  color: white;
-  font-size: 2.8rem;
-  font-weight: 1000;
-  font-style: italic;
-  letter-spacing: -.12em;
-  text-shadow: 0 4px #432487, 0 0 18px white;
-}
-.versus-mark::before {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  inset: -12px 20px;
-  background: var(--home-lime);
-  clip-path: polygon(55% 0,100% 0,63% 38%,92% 38%,28% 100%,43% 54%,8% 54%);
-  filter: drop-shadow(0 0 14px var(--home-lime));
+  margin: 6px 0;
 }
 .hero-brand {
   position: relative;
   z-index: 3;
-  align-self: start;
   margin: 0;
   text-align: center;
   font-weight: 1000;
-  font-size: 1.05rem;
+  font-size: clamp(1.9rem, 8vw, 2.65rem);
+  letter-spacing: -.055em;
+  text-shadow: 0 5px 24px rgba(0,0,0,.6);
 }
 .hero-brand span { color: var(--home-lime); }
 .play-actions {
@@ -674,9 +512,6 @@ button { touch-action:manipulation; }
 .profile-stats span { padding: 12px 5px; border: 1px solid #303b5c; border-radius: 12px; color: #8290aa; font-size: .6rem; text-transform: uppercase; }
 .profile-stats b { display: block; margin-bottom: 4px; color: #fff; font-size: 1rem; }
 @media (prefers-reduced-motion:no-preference) {
-  .challenger-lime { animation: hero-in-left .55s both; }
-  .challenger-purple { animation: hero-in-right .55s .08s both; }
-  .versus-mark::before { animation: bolt-pulse 2.3s ease-in-out infinite; }
   .play-cta { animation: cta-glow 2.5s ease-in-out infinite; }
   .game-home > .player-hud,
   .game-home > .duel-hero,
@@ -689,10 +524,7 @@ button { touch-action:manipulation; }
   .section-content { animation-delay: .035s; }
   .game-home > .play-actions { animation-delay: .07s; }
 }
-@keyframes hero-in-left { from { opacity:0; transform:translateX(-30px); } }
-@keyframes hero-in-right { from { opacity:0; transform:translateX(30px); } }
-@keyframes bolt-pulse { 50% { filter:drop-shadow(0 0 25px var(--home-lime)); transform:scale(1.06); } }
-@keyframes cta-glow { 50% { box-shadow:inset 0 -5px rgba(91,144,0,.28),0 0 0 3px rgba(151,226,21,.35),0 0 32px rgba(185,255,44,.5); } }
+@keyframes cta-glow { 50% { box-shadow:inset 0 -4px rgba(91,144,0,.22),0 0 22px rgba(185,255,44,.28); } }
 @keyframes screen-enter {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
@@ -1905,8 +1737,6 @@ button { touch-action:manipulation; }
   .result-hero h1 { font-size: 2rem; }
 }
 @media (max-width: 370px) {
-  .duel-hero { height: clamp(255px, 42dvh, 310px); }
-  .challenger { top: 43px; height: 210px; }
   .streak-badge { display: none; }
 }
 @media (max-height: 720px) {
@@ -1914,20 +1744,10 @@ button { touch-action:manipulation; }
   .player-hud { padding: 7px; }
   .player-avatar { width: 45px; height: 45px; }
   .duel-hero {
-    flex-basis: clamp(180px, 31svh, 220px);
-    min-height: clamp(180px, 31svh, 220px);
-    margin-top: clamp(2px, 1svh, 4px);
+    min-height: 74px;
+    margin-block: 2px;
   }
-  .duel-hero::before { inset: 18px 10% 54px; }
-  .challenger {
-    top: clamp(25px, 5.5svh, 38px);
-    height: clamp(150px, 29svh, 202px);
-  }
-  .versus-mark {
-    top: clamp(52px, 12svh, 82px);
-    transform: translateX(-50%) scale(.76);
-  }
-  .hero-brand { top: 3px; font-size: clamp(.82rem, 2.4svh, 1rem); }
+  .hero-brand { font-size: clamp(1.65rem, 7vw, 2.1rem); }
   .play-cta { min-height: 52px; }
   .join-code { margin-top: 8px; }
   .quick-mission {
